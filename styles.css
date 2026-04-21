@@ -823,3 +823,9 @@ body {
 .outline-editor-right .ql-editor {
     min-height: 300px;
 }
+
+.outline-preview-content .ql-editor {
+    padding: 0;
+    min-height: auto;
+    font-size: 0.875rem;
+}

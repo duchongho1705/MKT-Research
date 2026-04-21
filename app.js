@@ -680,6 +680,15 @@ const OutlineManager = {
             });
 
             showToast('Đã lưu Outline thành công!', 'success');
+            
+            // Xoá nội dung trên Form sau khi lưu thành công
+            if (this.quill) this.quill.root.innerHTML = '';
+            const fileInput = document.getElementById('outline-file-input');
+            if (fileInput) {
+                fileInput.value = '';
+                const evt = new Event('change');
+                fileInput.dispatchEvent(evt);
+            }
 
         } catch (e) {
             console.error('[Outline] Save error:', e);
@@ -697,6 +706,111 @@ const OutlineManager = {
                 lucide.createIcons();
             }
         }
+    },
+
+    loadSavedOutlines() {
+        if (!db) return;
+        
+        db.collection('outlines')
+          .orderBy('timestamp', 'desc')
+          .onSnapshot(snap => {
+              const list = document.getElementById('saved-outlines-list');
+              if (!list) return;
+              
+              if (snap.empty) {
+                  list.innerHTML = `
+                  <div class="col-span-full card-premium p-8 text-center bg-white border border-dashed border-slate-300 rounded-2xl">
+                      <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                          <i data-lucide="inbox" class="w-8 h-8"></i>
+                      </div>
+                      <p class="text-slate-500 font-medium">Chưa có kịch bản nào được lưu giữ.</p>
+                      <p class="text-sm text-slate-400 mt-1">Sử dụng Form phía trên để tạo kịch bản đầu tiên.</p>
+                  </div>`;
+                  if (window.lucide) lucide.createIcons();
+                  return;
+              }
+
+              let html = '';
+              snap.forEach(doc => {
+                  const data = doc.data();
+                  const time = formatTimestamp(data.timestamp);
+                  
+                  // Setup logic Media view 3 tỉ lệ chuẩn
+                  let mediaDisplay = `
+                      <div class="w-full h-full text-center p-8 bg-slate-50 flex flex-col items-center justify-center absolute inset-0">
+                          <i data-lucide="image-off" class="w-10 h-10 text-slate-300 mb-2"></i>
+                          <span class="text-xs text-slate-400 font-medium">Không có hình ảnh</span>
+                      </div>`;
+                      
+                  if (data.fileUrl) {
+                      if (data.fileType === 'application/pdf') {
+                           mediaDisplay = `
+                           <div class="w-full h-full bg-slate-100 flex flex-col items-center justify-center p-4 absolute inset-0 border border-slate-200">
+                               <i data-lucide="file-text" class="w-10 h-10 text-rose-500 mb-3"></i>
+                               <span class="text-[11px] font-bold text-slate-600 truncate max-w-full px-4 text-center">${escapeHtml(data.fileName)}</span>
+                               <a href="${data.fileUrl}" target="_blank" class="mt-4 text-xs font-bold text-rose-600 bg-white border border-rose-200 px-4 py-2 rounded-lg hover:bg-rose-50 transition-colors shadow-sm cursor-pointer relative z-10 flex items-center gap-1.5"><i data-lucide="external-link" class="w-3.5 h-3.5"></i> Mở File PDF</a>
+                           </div>`;
+                      } else {
+                           mediaDisplay = `
+                           <a href="${data.fileUrl}" target="_blank" class="absolute inset-0 block group/img">
+                               <img src="${data.fileUrl}" class="w-full h-full object-contain bg-slate-50" alt="Draft" />
+                               <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                  <i data-lucide="maximize-2" class="w-6 h-6 text-white"></i>
+                               </div>
+                           </a>`;
+                      }
+                  }
+
+                  html += `
+                  <div class="card-premium bg-white overflow-hidden flex flex-col h-full hover:border-indigo-300 transition-colors duration-300 group shadow-sm hover:shadow-indigo-500/10">
+                      <!-- Trạng thái header -->
+                      <div class="flex justify-between items-center p-4 py-3 border-b border-slate-100 bg-slate-50/80">
+                          <div class="flex items-center gap-2">
+                             <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                                 <i data-lucide="history" class="w-3.5 h-3.5"></i>
+                             </div>
+                             <div>
+                                 <p class="text-[10px] uppercase font-black tracking-widest text-slate-400">Thời gian tạo</p>
+                                 <p class="text-xs font-bold text-slate-700">${time}</p>
+                             </div>
+                          </div>
+                          <button onclick="OutlineManager.deleteOutline('${doc.id}')" class="text-slate-400 opacity-50 hover:opacity-100 hover:text-red-500 transition-all p-2 rounded-lg hover:bg-red-50" title="Xóa lưu trữ này">
+                              <i data-lucide="trash-2" class="w-4 h-4"></i>
+                          </button>
+                      </div>
+                      
+                      <!-- Split-view UI giả lập Mini -->
+                      <div class="flex flex-col flex-1 relative">
+                          <!-- Box ảnh tỉ lệ 1.414:1 giống lúc tạo -->
+                          <div class="w-full relative shadow-inner overflow-hidden a3-landscape-ratio bg-slate-100 border-b border-slate-200">
+                              ${mediaDisplay}
+                          </div>
+                          
+                          <!-- Box nội dung Outline Text -->
+                          <div class="p-6 flex-1 bg-white outline-preview-content">
+                              ${data.content ? `<div class="ql-editor">${data.content}</div>` : '<p class="text-slate-400 italic text-sm">Trống nội dung</p>'}
+                          </div>
+                      </div>
+                  </div>`;
+              });
+
+              list.innerHTML = html;
+              if (window.lucide) lucide.createIcons();
+          },
+          err => {
+              console.error("[Outline] Lỗi không thể tải lịch sử:", err);
+          });
+    },
+
+    async deleteOutline(id) {
+        if (!confirm('Bạn có chắc chắn muốn xóa bản trình bày kịch bản này? Biến động mạng có thể mất vài giây.')) return;
+        try {
+            await db.collection('outlines').doc(id).delete();
+            showToast('✅ Đã dọn dẹp kịch bản trống!', 'success');
+        } catch(e) {
+             console.error("[Outline] Delete error:", e);
+             showToast('Lỗi khi xóa: ' + e.message, 'error');
+        }
     }
 };
 
@@ -709,6 +823,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Init Outline Manager
     OutlineManager.init();
+    OutlineManager.loadSavedOutlines();
 
     // Firebase
     initFirebase();

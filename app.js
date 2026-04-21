@@ -799,6 +799,10 @@ const OutlineManager = {
           },
           err => {
               console.error("[Outline] Lỗi không thể tải lịch sử:", err);
+              const list = document.getElementById('saved-outlines-list');
+              if (list) {
+                  list.innerHTML = `<div class="col-span-full card-premium p-6 text-red-500 bg-red-50 border border-red-200">Lỗi tải dữ liệu: ${err.message}</div>`;
+              }
           });
     },
 

@@ -823,10 +823,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Init Outline Manager
     OutlineManager.init();
-    OutlineManager.loadSavedOutlines();
 
     // Firebase
     initFirebase();
+    
+    // Load Firebase Dependent modules
+    OutlineManager.loadSavedOutlines();
 
     // Feedback panel events
     document.getElementById('feedback-backdrop')?.addEventListener('click', () => FeedbackManager.closePanel());

@@ -624,34 +624,51 @@ const OutlineManager = {
             let fileUrl = null;
 
             if (this.selectedFile) {
-                const timestamp = Date.now();
-                const storageRef = storage.ref(`outlines/${timestamp}_${this.selectedFile.name}`);
-                
-                // Read file as Base64 to avoid browser File buffer issues (which often causes silent hangs)
+                // If PDF is too large, it might exceed Firestore 1MB limit. 
+                if (this.selectedFile.type === 'application/pdf' && this.selectedFile.size > 900000) {
+                    showToast('File PDF quá lớn (vượt quá 900KB). Vui lòng dùng hình ảnh JPG/PNG để tối ưu.', 'error', 5000);
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    return;
+                }
+
+                // Read file as Base64
                 const reader = new FileReader();
-                const dataUrl = await new Promise((resolve, reject) => {
+                fileUrl = await new Promise((resolve, reject) => {
                     reader.onload = () => resolve(reader.result);
                     reader.onerror = err => reject(err);
                     reader.readAsDataURL(this.selectedFile);
                 });
 
-                // Set explicit timeout since Firebase put can hang indefinitely
-                const uploadTask = storageRef.putString(dataUrl, 'data_url');
-                
-                uploadTask.on('state_changed', 
-                    (snap) => {
-                        const progress = (snap.bytesTransferred / snap.totalBytes) * 100;
-                        console.log(`[Firebase Upload] Progress: ${progress.toFixed(2)}%`);
-                    },
-                    (err) => console.error('[Firebase Upload] Observer Error:', err)
-                );
-
-                const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('TIMEOUT_STORAGE')), 20000);
-                });
-                
-                const snapshot = await Promise.race([uploadTask, timeoutPromise]);
-                fileUrl = await snapshot.ref.getDownloadURL();
+                // Compress image to ensure it fits comfortably within Firestore 1MB document limit
+                if (this.selectedFile.type.startsWith('image/')) {
+                    const img = new Image();
+                    img.src = fileUrl;
+                    await new Promise(r => img.onload = r);
+                    
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const maxDim = 1600; // Limit max resolution
+                    
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // Convert back to Base64 (JPEG 80% quality -> usually ~150KB)
+                    fileUrl = canvas.toDataURL('image/jpeg', 0.8);
+                }
             }
 
             await db.collection('outlines').add({

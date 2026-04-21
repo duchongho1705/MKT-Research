@@ -556,6 +556,7 @@ function escapeHtml(str) {
 const OutlineManager = {
     quill: null,
     selectedFile: null,
+    documents: {},
 
     init() {
         if (!document.getElementById('outline-quill-editor')) return;
@@ -739,8 +740,13 @@ const OutlineManager = {
               }
 
               let html = '';
+              OutlineManager.documents = {};
+
               snap.forEach(doc => {
                   const data = doc.data();
+                  data.id = doc.id;
+                  OutlineManager.documents[doc.id] = data;
+                  
                   const time = formatTimestamp(data.timestamp);
                   
                   // Setup logic Media view 3 tỉ lệ chuẩn
@@ -756,23 +762,28 @@ const OutlineManager = {
                            <div class="w-full h-full bg-slate-100 flex flex-col items-center justify-center p-4 absolute inset-0 border border-slate-200">
                                <i data-lucide="file-text" class="w-10 h-10 text-rose-500 mb-3"></i>
                                <span class="text-[11px] font-bold text-slate-600 truncate max-w-full px-4 text-center">${escapeHtml(data.fileName)}</span>
-                               <a href="${data.fileUrl}" target="_blank" class="mt-4 text-xs font-bold text-rose-600 bg-white border border-rose-200 px-4 py-2 rounded-lg hover:bg-rose-50 transition-colors shadow-sm cursor-pointer relative z-10 flex items-center gap-1.5"><i data-lucide="external-link" class="w-3.5 h-3.5"></i> Mở File PDF</a>
+                               <span class="mt-4 text-xs font-bold text-rose-600 bg-white border border-rose-200 px-4 py-2 rounded-lg hover:bg-rose-50 transition-colors shadow-sm flex items-center gap-1.5 pointer-events-none"><i data-lucide="external-link" class="w-3.5 h-3.5"></i> File PDF</span>
                            </div>`;
                       } else {
                            mediaDisplay = `
-                           <a href="${data.fileUrl}" target="_blank" class="absolute inset-0 block group/img">
+                           <div class="absolute inset-0 block group/img">
                                <img src="${data.fileUrl}" class="w-full h-full object-contain bg-slate-50" alt="Draft" />
-                               <div class="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
-                                  <i data-lucide="maximize-2" class="w-6 h-6 text-white"></i>
-                               </div>
-                           </a>`;
+                           </div>`;
                       }
                   }
 
                   html += `
-                  <div class="card-premium bg-white overflow-hidden flex flex-col h-full hover:border-indigo-300 transition-colors duration-300 group shadow-sm hover:shadow-indigo-500/10">
+                  <div class="card-premium bg-white overflow-hidden flex flex-col h-full hover:border-indigo-300 transition-colors duration-300 group shadow-sm hover:shadow-indigo-500/10 cursor-pointer relative" onclick="OutlineManager.openPreview('${doc.id}')">
+                      
+                      <!-- Overlay View -->
+                      <div class="absolute inset-0 bg-indigo-900/10 opacity-0 group-hover:opacity-100 backdrop-blur-[1px] transition-all duration-300 z-20 flex flex-col items-center justify-center">
+                          <div class="px-6 py-3 bg-white/95 text-indigo-700 font-bold rounded-xl shadow-xl shadow-indigo-900/20 flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                              <i data-lucide="maximize-2" class="w-4 h-4"></i> Mở Rộng
+                          </div>
+                      </div>
+
                       <!-- Trạng thái header -->
-                      <div class="flex justify-between items-center p-4 py-3 border-b border-slate-100 bg-slate-50/80">
+                      <div class="flex justify-between items-center p-4 py-3 border-b border-slate-100 bg-slate-50/80 relative z-30">
                           <div class="flex items-center gap-2">
                              <div class="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
                                  <i data-lucide="history" class="w-3.5 h-3.5"></i>
@@ -782,13 +793,13 @@ const OutlineManager = {
                                  <p class="text-xs font-bold text-slate-700">${time}</p>
                              </div>
                           </div>
-                          <button onclick="OutlineManager.deleteOutline('${doc.id}')" class="text-slate-400 opacity-50 hover:opacity-100 hover:text-red-500 transition-all p-2 rounded-lg hover:bg-red-50" title="Xóa lưu trữ này">
+                          <button onclick="event.stopPropagation(); OutlineManager.deleteOutline('${doc.id}')" class="text-slate-400 opacity-50 hover:opacity-100 hover:text-red-500 transition-all p-2 rounded-lg hover:bg-red-50 relative z-30" title="Xóa lưu trữ này">
                               <i data-lucide="trash-2" class="w-4 h-4"></i>
                           </button>
                       </div>
                       
                       <!-- Split-view UI giả lập Mini -->
-                      <div class="flex flex-col flex-1 relative">
+                      <div class="flex flex-col flex-1 relative z-10 pointer-events-none">
                           <!-- Box ảnh tỉ lệ 1.414:1 giống lúc tạo -->
                           <div class="w-full relative shadow-inner overflow-hidden a3-landscape-ratio bg-slate-100 border-b border-slate-200">
                               ${mediaDisplay}
@@ -818,10 +829,113 @@ const OutlineManager = {
         if (!confirm('Bạn có chắc chắn muốn xóa bản trình bày kịch bản này? Biến động mạng có thể mất vài giây.')) return;
         try {
             await db.collection('outlines').doc(id).delete();
-            showToast('✅ Đã dọn dẹp kịch bản trống!', 'success');
+            showToast('✅ Đã dọn dẹp kịch bản!', 'success');
+            // If deleting what's open, close it
+            const overlay = document.getElementById('outline-theater-overlay');
+            if (overlay && !overlay.classList.contains('opacity-0')) {
+                this.closePreview();
+            }
         } catch(e) {
              console.error("[Outline] Delete error:", e);
              showToast('Lỗi khi xóa: ' + e.message, 'error');
+        }
+    },
+
+    openPreview(id) {
+        const data = this.documents[id];
+        if (!data) return;
+
+        const overlay = document.getElementById('outline-theater-overlay');
+        const modal = document.getElementById('outline-theater-modal');
+        if (!overlay || !modal) return;
+
+        // Fill Header
+        document.getElementById('theater-timestamp').textContent = formatTimestamp(data.timestamp);
+        
+        // Fill Media
+        const mediaContainer = document.getElementById('theater-media-container');
+        const dlBtn = document.getElementById('theater-download-btn');
+        
+        if (data.fileUrl) {
+            dlBtn.style.display = 'flex';
+            dlBtn.onclick = () => this.downloadFile(id);
+
+            if (data.fileType === 'application/pdf') {
+                mediaContainer.innerHTML = `
+                <div class="flex flex-col items-center">
+                    <i data-lucide="file-text" class="w-16 h-16 text-rose-500 mb-4"></i>
+                    <p class="font-bold text-slate-700 text-sm max-w-xs text-center truncate">${escapeHtml(data.fileName)}</p>
+                    <a href="${data.fileUrl}" target="_blank" class="mt-4 px-4 py-2 bg-white text-rose-600 font-bold text-sm border border-rose-200 rounded-lg hover:bg-rose-50 shadow-sm flex items-center gap-2">
+                        <i data-lucide="external-link" class="w-4 h-4"></i> Trình duyệt ngoài
+                    </a>
+                </div>`;
+            } else {
+                mediaContainer.innerHTML = `<img src="${data.fileUrl}" alt="Media"/>`;
+            }
+        } else {
+            dlBtn.style.display = 'none';
+            mediaContainer.innerHTML = `
+                <div class="flex flex-col items-center">
+                    <i data-lucide="image-off" class="w-12 h-12 text-slate-300 mb-2"></i>
+                    <span class="text-sm text-slate-400 font-medium">Bản trình bày không có Media đính kèm</span>
+                </div>
+            `;
+        }
+
+        // Fill Text
+        const textContent = document.getElementById('theater-text-content');
+        textContent.innerHTML = data.content || '<p class="text-slate-400 italic">Trống nội dung</p>';
+
+        if (window.lucide) lucide.createIcons();
+
+        // Animate In
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        requestAnimationFrame(() => {
+            modal.classList.remove('scale-95', 'translate-y-4');
+            modal.classList.add('scale-100', 'translate-y-0');
+        });
+        document.body.style.overflow = 'hidden';
+    },
+
+    closePreview() {
+        const overlay = document.getElementById('outline-theater-overlay');
+        const modal = document.getElementById('outline-theater-modal');
+        if (!overlay || !modal) return;
+
+        modal.classList.remove('scale-100', 'translate-y-0');
+        modal.classList.add('scale-95', 'translate-y-4');
+        overlay.classList.add('opacity-0');
+        setTimeout(() => {
+            overlay.classList.add('pointer-events-none');
+        }, 300);
+        document.body.style.overflow = '';
+    },
+
+    downloadFile(id) {
+        const data = this.documents[id];
+        if (!data || !data.fileUrl) return;
+        
+        try {
+            const a = document.createElement('a');
+            a.href = data.fileUrl;
+            
+            // Generate clean filename
+            let ext = data.fileType === 'application/pdf' ? '.pdf' : '.jpg';
+            if (data.fileName && data.fileName.includes('.')) {
+                // If it already has an extension, use original name exactly
+                a.download = data.fileName;
+            } else {
+                const timeStr = formatTimestamp(data.timestamp).replace(/[\/\s:]/g, '-');
+                a.download = (data.fileName ? data.fileName : `Draft_${timeStr}`) + ext;
+            }
+            
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast("Bắt đầu tải xuống...", "info");
+        } catch(e) {
+            console.error("Download failed:", e);
+            showToast("Lỗi khi tải file. File có thể không hỗ trợ.", "error");
         }
     }
 };

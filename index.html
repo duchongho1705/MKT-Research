@@ -863,6 +863,55 @@
 
 
     <!-- ======================================================
+         OUTLINE THEATER MODAL (Popup Phóng To)
+    ====================================================== -->
+    <div class="outline-theater-overlay opacity-0 pointer-events-none fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 lg:p-8 transition-opacity duration-300" id="outline-theater-overlay">
+        <div class="bg-white w-full h-full max-w-7xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden scale-95 transition-transform duration-300 translate-y-4" id="outline-theater-modal">
+            
+            <!-- Header -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                        <i data-lucide="monitor-play" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-900">Chi tiết kịch bản</h3>
+                        <p class="text-xs text-slate-500 font-medium" id="theater-timestamp">...</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="theater-download-btn" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm rounded-xl transition-all shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/40 flex items-center gap-2">
+                        <i data-lucide="downloadCloud" class="w-4 h-4"></i> Tải Media
+                    </button>
+                    <button class="w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-colors" onclick="OutlineManager.closePreview()">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Body (Split View) -->
+            <div class="flex-1 overflow-hidden flex flex-col lg:flex-row bg-slate-50">
+                
+                <!-- Left: Media -->
+                <div class="lg:w-1/2 h-1/2 lg:h-full p-4 lg:p-8 flex items-center justify-center bg-slate-100/50 border-b lg:border-b-0 lg:border-r border-slate-200 overflow-hidden relative">
+                    <div id="theater-media-container" class="w-full h-full flex items-center justify-center relative rounded-xl shadow-inner bg-white overflow-hidden outline-theater-media">
+                        <!-- Media gets injected here -->
+                    </div>
+                </div>
+
+                <!-- Right: Text Content -->
+                <div class="lg:w-1/2 h-1/2 lg:h-full p-6 lg:p-10 overflow-y-auto outline-preview-content bg-white relative">
+                    <div id="theater-text-content" class="ql-editor w-full text-slate-700">
+                        <!-- Text gets injected here -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ======================================================
          TOAST CONTAINER
     ====================================================== -->
     <div class="toast-container" id="toast-container"></div>

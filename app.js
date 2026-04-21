@@ -425,8 +425,10 @@ const EditManager = {
             if (!doc.exists) return;
             const data = doc.data();
             if (!data || !data.elements) return;
+            
             const section = document.getElementById(tabId);
             if (!section) return;
+            
             Object.entries(data.elements).forEach(([editId, html]) => {
                 const el = section.querySelector(`[data-edit-id="${editId}"]`);
                 if (el) el.innerHTML = html;
@@ -457,16 +459,20 @@ const EditManager = {
         if (!section) return;
 
         this.originals = {};
+        
         section.querySelectorAll('[data-edit-id]').forEach(el => {
+            // Không áp dụng cho các khu vực Outline Builder Quill
+            if (el.closest('.outline-editor-right') || el.closest('.content-preview')) return;
+            
             this.originals[el.dataset.editId] = el.innerHTML;
             el.setAttribute('contenteditable', 'true');
             el.setAttribute('spellcheck', 'false');
         });
 
-        document.getElementById(`edit-toolbar-${tabId}`)?.classList.add('visible');
+        document.getElementById('global-edit-bar')?.classList.add('visible');
         document.getElementById(`edit-btn-${tabId}`)?.classList.add('editing');
 
-        showToast('✏️ Chế độ chỉnh sửa đã bật', 'info', 2500);
+        showToast('✏️ Chế độ Chỉnh Sửa Toàn Trang đã bật', 'info', 2500);
     },
 
     cancelEdit() {
@@ -476,14 +482,15 @@ const EditManager = {
 
         if (section) {
             section.querySelectorAll('[data-edit-id]').forEach(el => {
-                const orig = this.originals[el.dataset.editId];
-                if (orig !== undefined) el.innerHTML = orig;
+                if (this.originals[el.dataset.editId] !== undefined) {
+                    el.innerHTML = this.originals[el.dataset.editId];
+                }
                 el.removeAttribute('contenteditable');
                 el.removeAttribute('spellcheck');
             });
         }
 
-        document.getElementById(`edit-toolbar-${tabId}`)?.classList.remove('visible');
+        document.getElementById('global-edit-bar')?.classList.remove('visible');
         document.getElementById(`edit-btn-${tabId}`)?.classList.remove('editing');
 
         this.activeTab  = null;
@@ -499,7 +506,7 @@ const EditManager = {
         if (!section) return;
 
         const elements = {};
-        section.querySelectorAll('[data-edit-id]').forEach(el => {
+        section.querySelectorAll('[contenteditable="true"]').forEach(el => {
             elements[el.dataset.editId] = el.innerHTML;
             el.removeAttribute('contenteditable');
             el.removeAttribute('spellcheck');
@@ -510,19 +517,20 @@ const EditManager = {
                 elements,
                 tabId,
                 lastModified: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            showToast('💾 Đã lưu chỉnh sửa!', 'success');
+            }, { merge: true }); // Merge instead of overwrite to respect auto-IDs in other tabs if structured globally later
+            showToast('💾 Đã lưu phiên bản chỉnh sửa mới!', 'success');
         } catch (e) {
             console.error('[Edit] Save error:', e);
             showToast('Lỗi khi lưu: ' + e.message, 'error', 5000);
-            // Restore contenteditable on error
+            
+            // Phục hồi contenteditable nếu lỗi
             section.querySelectorAll('[data-edit-id]').forEach(el => {
-                el.setAttribute('contenteditable', 'true');
+                if (elements[el.dataset.editId] !== undefined) el.setAttribute('contenteditable', 'true');
             });
             return;
         }
 
-        document.getElementById(`edit-toolbar-${tabId}`)?.classList.remove('visible');
+        document.getElementById('global-edit-bar')?.classList.remove('visible');
         document.getElementById(`edit-btn-${tabId}`)?.classList.remove('editing');
         this.activeTab = null;
         this.originals = {};
@@ -819,9 +827,41 @@ const OutlineManager = {
 };
 
 /* ============================================================
+   GLOBAL AUTO-ID INJECTOR (Stable Hash mapping)
+   ============================================================ */
+function hashCode(str) {
+    let hash = 0;
+    for (let i = 0, len = str.length; i < len; i++) {
+        let chr = str.charCodeAt(i);
+        hash = (hash << 5) - hash + chr;
+        hash |= 0;
+    }
+    return Math.abs(hash).toString(16);
+}
+
+function injectAutoEditIds() {
+    const tags = 'h1, h2, h3, h4, h5, h6, p, li, td, th, span, strong, b, i';
+    document.querySelectorAll(tags).forEach((el) => {
+        // Bỏ qua các class đặc biệt không cần sửa
+        if (el.closest('.outline-editor-right') || el.closest('.content-preview') || el.closest('button') || el.closest('a')) return;
+        
+        // Chỉ bọc thẻ nào có text thực sự
+        const hasDirectText = Array.from(el.childNodes).some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim().length > 0);
+        
+        if (hasDirectText && !el.hasAttribute('data-edit-id')) {
+            const hash = hashCode(el.tagName + el.textContent.trim());
+            el.setAttribute('data-edit-id', 'auto-' + hash);
+        }
+    });
+}
+
+/* ============================================================
    INIT
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
+    // Generate IDs for all text nodes systematically
+    injectAutoEditIds();
+
     // Icons
     lucide.createIcons();
     

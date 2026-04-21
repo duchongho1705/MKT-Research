@@ -340,7 +340,7 @@ const FeedbackManager = {
             return true;
         } catch (e) {
             console.error('[Feedback] Add error:', e);
-            showToast('Lỗi khi gửi góp ý. Thử lại!', 'error');
+            showToast('Lỗi khi gửi góp ý: ' + e.message, 'error', 5000);
             return false;
         }
     },
@@ -514,7 +514,7 @@ const EditManager = {
             showToast('💾 Đã lưu chỉnh sửa!', 'success');
         } catch (e) {
             console.error('[Edit] Save error:', e);
-            showToast('Lỗi khi lưu. Thử lại!', 'error');
+            showToast('Lỗi khi lưu: ' + e.message, 'error', 5000);
             // Restore contenteditable on error
             section.querySelectorAll('[data-edit-id]').forEach(el => {
                 el.setAttribute('contenteditable', 'true');

@@ -24,7 +24,7 @@ const FIREBASE_CONFIG = {
     apiKey:            "AIzaSyAI_oXIVEyKkmvBNWIAok8J8nAtSBtRl1A",
     authDomain:        "e-hsnl.firebaseapp.com",
     projectId:         "e-hsnl",
-    storageBucket:     "e-hsnl.firebasestorage.app",
+    storageBucket:     "e-hsnl.appspot.com",
     messagingSenderId: "854735568018",
     appId:             "1:854735568018:web:7f68ef361a4211d7c97a4b"
 };
@@ -629,6 +629,15 @@ const OutlineManager = {
                 
                 // Set explicit timeout since Firebase put can hang indefinitely
                 const uploadTask = storageRef.put(this.selectedFile);
+                
+                uploadTask.on('state_changed', 
+                    (snap) => {
+                        const progress = (snap.bytesTransferred / snap.totalBytes) * 100;
+                        console.log(`[Firebase Upload] Progress: ${progress.toFixed(2)}%`);
+                    },
+                    (err) => console.error('[Firebase Upload] Observer Error:', err)
+                );
+
                 const timeoutPromise = new Promise((_, reject) => {
                     setTimeout(() => reject(new Error('TIMEOUT_STORAGE')), 10000);
                 });

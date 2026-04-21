@@ -24,7 +24,7 @@ const FIREBASE_CONFIG = {
     apiKey:            "AIzaSyAI_oXIVEyKkmvBNWIAok8J8nAtSBtRl1A",
     authDomain:        "e-hsnl.firebaseapp.com",
     projectId:         "e-hsnl",
-    storageBucket:     "e-hsnl.appspot.com",
+    storageBucket:     "e-hsnl.firebasestorage.app",
     messagingSenderId: "854735568018",
     appId:             "1:854735568018:web:7f68ef361a4211d7c97a4b"
 };
@@ -627,8 +627,16 @@ const OutlineManager = {
                 const timestamp = Date.now();
                 const storageRef = storage.ref(`outlines/${timestamp}_${this.selectedFile.name}`);
                 
+                // Read file as Base64 to avoid browser File buffer issues (which often causes silent hangs)
+                const reader = new FileReader();
+                const dataUrl = await new Promise((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = err => reject(err);
+                    reader.readAsDataURL(this.selectedFile);
+                });
+
                 // Set explicit timeout since Firebase put can hang indefinitely
-                const uploadTask = storageRef.put(this.selectedFile);
+                const uploadTask = storageRef.putString(dataUrl, 'data_url');
                 
                 uploadTask.on('state_changed', 
                     (snap) => {
@@ -639,7 +647,7 @@ const OutlineManager = {
                 );
 
                 const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('TIMEOUT_STORAGE')), 10000);
+                    setTimeout(() => reject(new Error('TIMEOUT_STORAGE')), 20000);
                 });
                 
                 const snapshot = await Promise.race([uploadTask, timeoutPromise]);

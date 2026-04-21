@@ -649,10 +649,12 @@ const OutlineManager = {
 
         } catch (e) {
             console.error('[Outline] Save error:', e);
-            if (e.message === 'TIMEOUT_STORAGE' || (e.code && e.code.includes('storage'))) {
-                showToast('Lỗi Upload! Vui lòng kiểm tra Firebase Storage Rules (cần bật chế độ Read/Write) hoặc Firebase Console.', 'error', 5000);
+            if (e.message === 'TIMEOUT_STORAGE') {
+                showToast('Lỗi Upload! Đã quá 10s không phản hồi. Vui lòng check Console (F12).', 'error', 6000);
+            } else if (e.code && e.code.includes('storage')) {
+                showToast(`Lỗi Storage: ${e.code} - ${e.message}`, 'error', 8000);
             } else {
-                showToast('Lỗi khi lưu Outline: ' + e.message, 'error');
+                showToast(`Lỗi: ${e.message}`, 'error', 8000);
             }
         } finally {
             btn.disabled = false;

@@ -8,9 +8,14 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="styles.css">
+    <!-- Quill.js CSS -->
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <!-- Firebase v10 Compat SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+    <!-- Quill.js Script -->
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
 </head>
 
 <body class="selection:bg-emerald-200 selection:text-emerald-900">
@@ -58,6 +63,13 @@
                     data-target="profile">
                     <i data-lucide="layout-template" class="w-4 h-4"></i>
                     4. Cấu Trúc HSNL
+                </button>
+
+                <button onclick="switchTab('outline')"
+                    class="tab-btn w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium rounded-xl transition-all duration-200 text-emerald-100/70 hover:bg-emerald-500/10 hover:text-emerald-50 border border-transparent"
+                    data-target="outline">
+                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                    5. Outline Builder
                 </button>
             </nav>
 
@@ -672,6 +684,99 @@
                                             <li><strong>Khối doanh nghiệp FDI:</strong> Case Schindler / BAT – Minh chứng độ tương thích với quy trình thẩm định tiêu chuẩn quốc tế.</li>
                                         </ul>
                                     </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </section>
+
+
+                    <!-- ==========================================
+                         TAB 5: OUTLINE BUILDER
+                    ========================================== -->
+                    <section id="outline" class="tab-content">
+                        <!-- Edit Toolbar -->
+                        <div class="edit-toolbar" id="edit-toolbar-outline">
+                            <div class="edit-toolbar-info">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Đang chỉnh sửa — Nhấp vào văn bản để sửa
+                            </div>
+                            <div class="edit-toolbar-actions">
+                                <button class="btn-cancel-edit" onclick="EditManager.cancelEdit()">Huỷ</button>
+                                <button class="btn-save-edit" onclick="EditManager.saveEdits()">💾 Lưu Thay Đổi</button>
+                            </div>
+                        </div>
+
+                        <!-- Action Bar -->
+                        <div class="tab-action-bar flex justify-between items-center mb-6">
+                            <div class="flex items-center gap-2">
+                                <button class="btn-edit" id="edit-btn-outline" onclick="EditManager.toggle('outline')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    Chỉnh Sửa
+                                </button>
+                                <button class="btn-feedback" onclick="FeedbackManager.openPanel('outline')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                    Góp Ý
+                                    <span class="feedback-count-badge" id="badge-outline">0</span>
+                                </button>
+                            </div>
+                            <button id="btn-save-outline" class="btn-save-edit flex items-center gap-2" onclick="OutlineManager.save()">
+                                <i data-lucide="upload-cloud" class="w-4 h-4 text-white"></i> Lưu Lên Hệ Thống
+                            </button>
+                        </div>
+                        
+                        <header class="mb-10 text-center md:text-left">
+                            <div class="section-tag bg-indigo-50 text-indigo-700 m-0 mb-4">
+                                <i data-lucide="pen-tool" class="w-3.5 h-3.5"></i>
+                                Thảo Luận Kịch Bản
+                            </div>
+                            <h2 data-edit-id="outline-h2" class="text-3xl md:text-4xl font-extrabold text-slate-900 mb-4 tracking-tight leading-tight">
+                                Outline Builder:<br />Cấu Trúc HSNL Đồng Bộ Tỉ Lệ Đóng Gói
+                            </h2>
+                            <p data-edit-id="outline-desc" class="text-base text-slate-600 max-w-3xl leading-relaxed mx-auto md:mx-0">
+                                <b>(Landscape - 420x297)</b> Khu vực xem trước hình ảnh/bảng phác thảo A3 và nhập liệu Text kịch bản liền kề, giúp liên kết thông tin hình ảnh thực tế với dữ liệu Content.
+                            </p>
+                        </header>
+
+                        <!-- Split View Layout -->
+                        <div class="grid lg:grid-cols-2 gap-8 items-start animate-stagger">
+                            
+                            <!-- Left Col: Image Upload & Preview -->
+                            <div class="card-premium p-6 bg-white outline-editor-left">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i data-lucide="image" class="text-indigo-600 w-5 h-5"></i>
+                                    Hình Ảnh Tham Chiếu (A3 Ngang)
+                                </h3>
+
+                                <div class="mb-5">
+                                    <label class="block text-sm font-semibold text-slate-700 mb-2">Tải Lên Bản Nháp (JPG, PNG, PDF)</label>
+                                    <input type="file" id="outline-file-input" accept="image/jpeg, image/png, application/pdf" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-colors shadow-sm cursor-pointer border border-slate-200 rounded-lg"/>
+                                </div>
+
+                                <!-- A3 Landscape Preview Container -->
+                                <div class="a3-landscape-ratio w-full bg-slate-100 rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center relative overflow-hidden group">
+                                    <div id="outline-preview-empty" class="text-center p-4">
+                                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mx-auto mb-3 text-indigo-500">
+                                            <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                                        </div>
+                                        <p class="text-sm text-slate-500 font-medium">Chưa có tệp nào được chọn</p>
+                                        <p class="text-xs text-slate-400 mt-1">Tỉ lệ chuẩn (1.414 : 1)</p>
+                                    </div>
+                                    <img id="outline-img-preview" class="w-full h-full object-contain absolute inset-0 hidden" alt="Bản nháp" />
+                                    <iframe id="outline-pdf-preview" class="w-full h-full absolute inset-0 hidden border-0" title="PDF preview"></iframe>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Col: Text/Rich Editor -->
+                            <div class="card-premium p-6 bg-white outline-editor-right h-full flex flex-col">
+                                <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                    <i data-lucide="file-text" class="text-indigo-600 w-5 h-5"></i>
+                                    Nội Dung Kịch Bản
+                                </h3>
+                                
+                                <div class="flex-1 flex flex-col mt-2 outline-quill-wrapper">
+                                    <!-- Quill Editor goes here -->
+                                    <div id="outline-quill-editor"></div>
                                 </div>
                             </div>
 

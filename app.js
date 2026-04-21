@@ -33,6 +33,7 @@ const FIREBASE_CONFIG = {
    STATE & CONSTANTS
    ============================================================ */
 let db = null;
+let storage = null;
 let currentTab = 'context';
 let feedbackUnsub = null; // Active Firestore listener
 
@@ -40,7 +41,8 @@ const TAB_NAMES = {
     context:     '1. Nền Tảng Dữ Liệu',
     competitors: '2. Phân Tích Cạnh Tranh',
     positioning: '3. Hoạch Định Vị Thế',
-    profile:     '4. Cấu Trúc HSNL'
+    profile:     '4. Cấu Trúc HSNL',
+    outline:     '5. Outline Builder'
 };
 
 const AVATAR_COLORS = [
@@ -70,6 +72,7 @@ function initFirebase() {
     try {
         firebase.initializeApp(FIREBASE_CONFIG);
         db = firebase.firestore();
+        storage = firebase.storage();
         // Enable offline tab sync
         db.enablePersistence({ synchronizeTabs: true })
           .catch(err => {
@@ -540,11 +543,136 @@ function escapeHtml(str) {
 }
 
 /* ============================================================
+   OUTLINE MANAGER
+   ============================================================ */
+const OutlineManager = {
+    quill: null,
+    selectedFile: null,
+
+    init() {
+        if (!document.getElementById('outline-quill-editor')) return;
+        
+        if (typeof Quill !== 'undefined') {
+            this.quill = new Quill('#outline-quill-editor', {
+                theme: 'snow',
+                placeholder: 'Nhập nội dung kịch bản cho trang này...',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['clean']
+                    ]
+                }
+            });
+        }
+
+        const fileInput = document.getElementById('outline-file-input');
+        const imgPreview = document.getElementById('outline-img-preview');
+        const pdfPreview = document.getElementById('outline-pdf-preview');
+        const emptyState = document.getElementById('outline-preview-empty');
+
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                this.selectedFile = file || null;
+
+                imgPreview.classList.add('hidden');
+                pdfPreview.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+
+                if (file) {
+                    emptyState.classList.add('hidden');
+                    const objectUrl = URL.createObjectURL(file);
+                    if (file.type === 'application/pdf') {
+                        pdfPreview.src = objectUrl;
+                        pdfPreview.classList.remove('hidden');
+                    } else if (file.type.startsWith('image/')) {
+                        imgPreview.src = objectUrl;
+                        imgPreview.classList.remove('hidden');
+                    }
+                }
+            });
+        }
+    },
+
+    async save() {
+        if (!db || !storage) {
+            showToast('Firebase chưa được cấu hình đầy đủ', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('btn-save-outline');
+        let htmlContent = '';
+        let plainText = '';
+        
+        if (this.quill) {
+            htmlContent = this.quill.root.innerHTML;
+            plainText = this.quill.getText().trim();
+        }
+
+        if (!this.selectedFile && plainText.length === 0) {
+            showToast('Vui lòng thêm hình ảnh hoặc nội dung kịch bản', 'error');
+            return;
+        }
+
+        btn.disabled = true;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = 'Đang xử lý...';
+
+        try {
+            let fileUrl = null;
+
+            if (this.selectedFile) {
+                const timestamp = Date.now();
+                const storageRef = storage.ref(`outlines/${timestamp}_${this.selectedFile.name}`);
+                
+                // Set explicit timeout since Firebase put can hang indefinitely
+                const uploadTask = storageRef.put(this.selectedFile);
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('TIMEOUT_STORAGE')), 10000);
+                });
+                
+                const snapshot = await Promise.race([uploadTask, timeoutPromise]);
+                fileUrl = await snapshot.ref.getDownloadURL();
+            }
+
+            await db.collection('outlines').add({
+                fileUrl: fileUrl,
+                fileName: this.selectedFile ? this.selectedFile.name : null,
+                fileType: this.selectedFile ? this.selectedFile.type : null,
+                content: htmlContent,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            showToast('Đã lưu Outline thành công!', 'success');
+
+        } catch (e) {
+            console.error('[Outline] Save error:', e);
+            if (e.message === 'TIMEOUT_STORAGE' || (e.code && e.code.includes('storage'))) {
+                showToast('Lỗi Upload! Vui lòng kiểm tra Firebase Storage Rules (cần bật chế độ Read/Write) hoặc Firebase Console.', 'error', 5000);
+            } else {
+                showToast('Lỗi khi lưu Outline: ' + e.message, 'error');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            if (window.lucide) {
+                lucide.createIcons();
+            }
+        }
+    }
+};
+
+/* ============================================================
    INIT
    ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
     // Icons
     lucide.createIcons();
+    
+    // Init Outline Manager
+    OutlineManager.init();
 
     // Firebase
     initFirebase();

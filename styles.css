@@ -798,3 +798,28 @@ body {
     color: #1e3a8a;
     text-decoration: underline;
 }
+
+/* ============================================================
+   OUTLINE BUILDER TAB
+   ============================================================ */
+.a3-landscape-ratio {
+    aspect-ratio: 1.414 / 1;
+}
+
+.outline-editor-right .ql-toolbar {
+    border-radius: 0.75rem 0.75rem 0 0;
+    border-color: #e2e8f0;
+    background: #f8fafc;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.outline-editor-right .ql-container {
+    border-radius: 0 0 0.75rem 0.75rem;
+    border-color: #e2e8f0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.875rem;
+}
+
+.outline-editor-right .ql-editor {
+    min-height: 300px;
+}
